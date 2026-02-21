@@ -20,7 +20,7 @@ def export_to_onnx(model, sample_input: np.ndarray, out_path: Path, opset: int =
     return out_path
 
 
-def validate_onnx(onnx_path: Path, sklearn_model, x_test: np.ndarray) -> Dict:
+def validate_onnx(onnx_path: Path, sklearn_model, x_test: np.ndarray, min_agreement: float = 0.98) -> Dict:
     try:
         import onnxruntime as ort
     except ImportError as exc:
@@ -42,6 +42,8 @@ def validate_onnx(onnx_path: Path, sklearn_model, x_test: np.ndarray) -> Dict:
     throughput = float(len(x_test) / max(onnx_t, 1e-9))
     return {
         "agreement": agreement,
+        "min_agreement": float(min_agreement),
+        "parity_pass": bool(agreement >= min_agreement),
         "sklearn_latency_s": float(sk_t),
         "onnx_latency_s": float(onnx_t),
         "onnx_throughput_samples_per_s": throughput,

@@ -9,13 +9,20 @@ def main():
     parser.add_argument("--model", choices=["knn", "rf"], default="knn")
     parser.add_argument("--sample-size", type=int, default=6000)
     parser.add_argument("--seed", type=int, default=40)
+    parser.add_argument("--dataset", choices=["mnist", "digits"], default="mnist")
+    parser.add_argument("--fail-fast-dataset", action="store_true")
     parser.add_argument("--run-compression", action="store_true")
     parser.add_argument("--run-quantization", action="store_true")
     parser.add_argument("--weight-prune", type=float, default=0.2)
     parser.add_argument("--neuron-prune", type=float, default=0.1)
     args = parser.parse_args()
 
-    sys_cfg = SystemConfig(seed=args.seed, sample_size=args.sample_size)
+    sys_cfg = SystemConfig(
+        seed=args.seed,
+        sample_size=args.sample_size,
+        dataset=args.dataset,
+        fail_fast_dataset=args.fail_fast_dataset,
+    )
     tr_cfg = TrainingConfig(model_name=args.model)
     export_run_metadata(sys_cfg, tr_cfg)
     base = train_once(sys_cfg, tr_cfg)

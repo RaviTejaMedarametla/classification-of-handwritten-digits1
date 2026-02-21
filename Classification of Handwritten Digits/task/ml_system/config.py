@@ -9,6 +9,8 @@ class SystemConfig:
     sample_size: int = 6000
     test_size: float = 0.3
     normalize: bool = True
+    dataset: str = "mnist"
+    fail_fast_dataset: bool = False
     artifacts_dir: Path = Path("artifacts")
     confidence_z: float = 1.96
 
@@ -39,6 +41,7 @@ class QuantizationConfig:
 class DeploymentConfig:
     onnx_opset: int = 12
     batch_size: int = 64
+    onnx_min_agreement: float = 0.98
 
 
 @dataclass

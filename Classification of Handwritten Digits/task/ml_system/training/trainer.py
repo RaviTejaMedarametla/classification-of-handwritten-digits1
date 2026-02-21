@@ -4,7 +4,7 @@ from typing import Dict
 from sklearn.metrics import accuracy_score
 
 from ml_system.config import CompressionConfig, QuantizationConfig, SystemConfig, TrainingConfig
-from ml_system.data.dataset import load_mnist, save_dataset_metadata, split_and_normalize
+from ml_system.data.dataset import load_dataset, save_dataset_metadata, split_and_normalize
 from ml_system.models.classical import build_model
 from ml_system.models.compression import neuron_prune_features, weight_prune_features
 from ml_system.models.quantization import quantize_dataset
@@ -15,8 +15,8 @@ from ml_system.utils.reproducibility import set_deterministic
 
 def train_once(system_config: SystemConfig, training_config: TrainingConfig) -> Dict:
     set_deterministic(system_config.seed)
-    x, y = load_mnist(system_config)
-    save_dataset_metadata(system_config, x, y)
+    x, y, dataset_meta = load_dataset(system_config)
+    save_dataset_metadata(system_config, x, y, dataset_meta)
     x_train, x_test, y_train, y_test = split_and_normalize(x, y, system_config)
 
     model = build_model(training_config)
@@ -60,7 +60,7 @@ def run_compression(system_config: SystemConfig, training_config: TrainingConfig
 
 def run_quantization(system_config: SystemConfig, training_config: TrainingConfig, quant_config: QuantizationConfig):
     set_deterministic(system_config.seed)
-    x, y = load_mnist(system_config)
+    x, y, _ = load_dataset(system_config)
     x_train, x_test, y_train, y_test = split_and_normalize(x, y, system_config)
 
     out = {}

@@ -5,9 +5,14 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 
 from ml_system.config import HardwareSimConfig, SystemConfig, TrainingConfig
-from ml_system.data.dataset import load_mnist, split_and_normalize
+from ml_system.data.dataset import load_dataset, split_and_normalize
 from ml_system.models.classical import build_model
-from ml_system.models.compression import neuron_prune_features, weight_prune_features
+from ml_system.models.compression import (
+    knn_prototype_reduction,
+    neuron_prune_features,
+    prune_random_forest,
+    weight_prune_features,
+)
 from ml_system.utils.metrics import confidence_interval, estimate_energy_joules, save_json, timed_call
 from ml_system.utils.plots import plot_curve
 from ml_system.utils.reproducibility import set_deterministic
@@ -19,7 +24,7 @@ def repeated_benchmark(system_config: SystemConfig, training_config: TrainingCon
     trains: List[float] = []
     for i in range(runs):
         set_deterministic(system_config.seed + i)
-        x, y = load_mnist(system_config)
+        x, y, _ = load_dataset(system_config)
         x_train, x_test, y_train, y_test = split_and_normalize(x, y, system_config)
         model = build_model(training_config)
         _, train_t = timed_call(model.fit, x_train, y_train)
@@ -45,7 +50,7 @@ def repeated_benchmark(system_config: SystemConfig, training_config: TrainingCon
 
 def hardware_simulation(system_config: SystemConfig, training_config: TrainingConfig, hw: HardwareSimConfig):
     set_deterministic(system_config.seed)
-    x, y = load_mnist(system_config)
+    x, y, _ = load_dataset(system_config)
     x_train, x_test, y_train, y_test = split_and_normalize(x, y, system_config)
 
     model = build_model(training_config)
@@ -122,7 +127,7 @@ def pruning_hardware_experiment(
 
         for run in range(runs):
             set_deterministic(system_config.seed + run)
-            x, y = load_mnist(system_config)
+            x, y, _ = load_dataset(system_config)
             x_train, x_test, y_train, y_test = split_and_normalize(x, y, system_config)
             baseline_sparsity = float((x_train == 0.0).mean())
             pruned = _apply_pruning(x_train, x_test, pruning_type=pruning_type, level=level)
@@ -216,5 +221,89 @@ def pruning_hardware_experiment(
         "Added Sparsity",
         "Energy per inference (J)",
         root / f"sparsity_vs_energy_{training_config.model_name}_{pruning_type}.png",
+    )
+    return report
+
+
+def model_level_compression_experiment(
+    system_config: SystemConfig,
+    training_config: TrainingConfig,
+    runs: int = 3,
+    levels: Sequence[float] = (0.0, 0.2, 0.4, 0.6),
+) -> Dict:
+    rows = []
+    for level in levels:
+        accs: List[float] = []
+        lats: List[float] = []
+        model_sizes: List[float] = []
+        compression_ratios: List[float] = []
+
+        for run in range(runs):
+            set_deterministic(system_config.seed + run)
+            x, y, _ = load_dataset(system_config)
+            x_train, x_test, y_train, y_test = split_and_normalize(x, y, system_config)
+
+            base = build_model(training_config)
+            base.fit(x_train, y_train)
+            base_model_size = max(float(len(pickle.dumps(base)) / (1024 ** 2)), 1e-12)
+
+            if training_config.model_name == "knn":
+                reduced = knn_prototype_reduction(x_train, y_train, reduction_level=level)
+                model = build_model(training_config)
+                model.fit(reduced.x_train, reduced.y_train)
+            elif training_config.model_name == "rf":
+                max_depth = None if level <= 0 else max(2, int(20 * (1.0 - level)))
+                ccp_alpha = 0.001 * level
+                min_samples_leaf = 1 + int(9 * level)
+                model = prune_random_forest(base, max_depth=max_depth, ccp_alpha=ccp_alpha, min_samples_leaf=min_samples_leaf)
+                model.fit(x_train, y_train)
+            else:
+                raise ValueError(f"Unsupported model_name={training_config.model_name}")
+
+            preds, lat = timed_call(model.predict, x_test)
+            accs.append(float(accuracy_score(y_test, preds)))
+            lats.append(float(lat))
+            model_size = float(len(pickle.dumps(model)) / (1024 ** 2))
+            model_sizes.append(model_size)
+            compression_ratios.append(1.0 - (model_size / base_model_size))
+
+        acc_mean, acc_std, acc_ci = confidence_interval(accs, system_config.confidence_z)
+        lat_mean, lat_std, lat_ci = confidence_interval(lats, system_config.confidence_z)
+        ms_mean, ms_std, ms_ci = confidence_interval(model_sizes, system_config.confidence_z)
+        cr_mean, cr_std, cr_ci = confidence_interval(compression_ratios, system_config.confidence_z)
+        rows.append(
+            {
+                "target_level": float(level),
+                "accuracy": {"mean": acc_mean, "std": acc_std, "ci95": acc_ci},
+                "latency_s": {"mean": lat_mean, "std": lat_std, "ci95": lat_ci},
+                "model_size_mb": {"mean": ms_mean, "std": ms_std, "ci95": ms_ci},
+                "compression_ratio": {"mean": cr_mean, "std": cr_std, "ci95": cr_ci},
+            }
+        )
+
+    report = {
+        "model": training_config.model_name,
+        "runs": runs,
+        "levels": rows,
+    }
+    root = system_config.artifacts_dir
+    save_json(report, root / f"model_level_compression_{training_config.model_name}.json")
+
+    x_comp = [item["compression_ratio"]["mean"] for item in rows]
+    plot_curve(
+        x_comp,
+        [item["accuracy"]["mean"] for item in rows],
+        "Model Compression Ratio vs Accuracy",
+        "Compression Ratio",
+        "Accuracy",
+        root / f"compression_ratio_vs_accuracy_{training_config.model_name}.png",
+    )
+    plot_curve(
+        x_comp,
+        [item["latency_s"]["mean"] for item in rows],
+        "Model Compression Ratio vs Latency",
+        "Compression Ratio",
+        "Latency (s)",
+        root / f"compression_ratio_vs_latency_{training_config.model_name}.png",
     )
     return report

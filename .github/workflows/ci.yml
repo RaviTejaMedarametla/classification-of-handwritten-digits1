@@ -12,11 +12,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install deps
+      - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Smoke train
-        run: python "Classification of Handwritten Digits/task/train_cli.py" --model knn --dataset digits
-      - name: ONNX parity
-        run: python "Classification of Handwritten Digits/task/infer_cli.py" --model knn --dataset digits --export-onnx --onnx-min-agreement 0.98
-      - name: Legacy compatibility
-        run: python "Classification of Handwritten Digits/task/analysis.py"
+      - name: Smoke training
+        run: python -m research.train_cli --model knn --dataset digits
+      - name: Compression benchmark smoke
+        run: python -m research.evaluate_cli --model rf --dataset digits --runs 2 --run-model-compression
+      - name: ONNX parity check
+        run: python -m research.infer_cli --model knn --dataset digits --export-onnx --onnx-min-agreement 0.98

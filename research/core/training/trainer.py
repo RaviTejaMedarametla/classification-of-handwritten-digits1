@@ -10,7 +10,7 @@ from compression.compression import neuron_prune_features, weight_prune_features
 from compression.quantization import quantize_dataset
 from research.core.utils.metrics import save_json, timed_call
 from research.core.utils.plots import plot_bar
-from research.core.utils.reproducibility import set_deterministic
+from research.core.utils.reproducibility import runtime_manifest, set_deterministic
 
 
 def train_once(system_config: SystemConfig, training_config: TrainingConfig) -> Dict:
@@ -90,5 +90,6 @@ def export_run_metadata(system_config: SystemConfig, training_config: TrainingCo
     payload = {
         "system": {**asdict(system_config), "artifacts_dir": str(system_config.artifacts_dir)},
         "training": asdict(training_config),
+        "runtime": runtime_manifest(system_config.seed),
     }
     save_json(payload, system_config.artifacts_dir / "run_config.json")

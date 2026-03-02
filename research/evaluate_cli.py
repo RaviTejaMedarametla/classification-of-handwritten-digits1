@@ -6,6 +6,7 @@ from benchmarks.benchmark import (
     model_level_compression_experiment,
     pruning_hardware_experiment,
     repeated_benchmark,
+    operator_level_profile,
 )
 
 
@@ -19,6 +20,7 @@ def main():
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--sample-size", type=int, default=6000)
     parser.add_argument("--dataset", choices=["mnist", "digits"], default="mnist")
+    parser.add_argument("--seed", type=int, default=40)
     parser.add_argument("--fail-fast-dataset", action="store_true")
     parser.add_argument("--memory-budget-mb", type=int, default=8)
     parser.add_argument("--compute-scale", type=float, default=1.0)
@@ -27,14 +29,17 @@ def main():
     parser.add_argument("--pruning-type", choices=["weight", "neuron"], default="weight")
     parser.add_argument("--sparsity-levels", type=str, default="0.0,0.2,0.4,0.6,0.8")
     parser.add_argument("--compression-levels", type=str, default="0.0,0.2,0.4,0.6")
+    parser.add_argument("--run-operator-profile", action="store_true")
+    parser.add_argument("--profile-batch-size", type=int, default=64)
     args = parser.parse_args()
 
     sys_cfg = SystemConfig(
+        seed=args.seed,
         sample_size=args.sample_size,
         dataset=args.dataset,
         fail_fast_dataset=args.fail_fast_dataset,
     )
-    tr_cfg = TrainingConfig(model_name=args.model)
+    tr_cfg = TrainingConfig(model_name=args.model, rf_random_state=args.seed)
     stats = repeated_benchmark(sys_cfg, tr_cfg, runs=args.runs)
     hw_cfg = HardwareSimConfig(memory_budget_mb=args.memory_budget_mb, compute_scale=args.compute_scale)
     resource, acc = hardware_simulation(sys_cfg, tr_cfg, hw_cfg)
@@ -51,6 +56,10 @@ def main():
             runs=args.runs,
         )
         print(f"pruning_efficiency={report}")
+
+    if args.run_operator_profile:
+        report = operator_level_profile(sys_cfg, tr_cfg, batch_size=args.profile_batch_size)
+        print(f"operator_profile={report}")
 
     if args.run_model_compression:
         report = model_level_compression_experiment(

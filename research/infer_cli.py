@@ -12,14 +12,15 @@ def main():
     parser.add_argument("--model", choices=["knn", "rf"], default="knn")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--dataset", choices=["mnist", "digits"], default="mnist")
+    parser.add_argument("--seed", type=int, default=40)
     parser.add_argument("--fail-fast-dataset", action="store_true")
     parser.add_argument("--export-onnx", action="store_true")
     parser.add_argument("--onnx-min-agreement", type=float, default=0.98)
     parser.add_argument("--save-model", action="store_true")
     args = parser.parse_args()
 
-    sys_cfg = SystemConfig(dataset=args.dataset, fail_fast_dataset=args.fail_fast_dataset)
-    tr_cfg = TrainingConfig(model_name=args.model)
+    sys_cfg = SystemConfig(seed=args.seed, dataset=args.dataset, fail_fast_dataset=args.fail_fast_dataset)
+    tr_cfg = TrainingConfig(model_name=args.model, rf_random_state=args.seed)
     dep_cfg = DeploymentConfig(batch_size=args.batch_size, onnx_min_agreement=args.onnx_min_agreement)
 
     trained = train_once(sys_cfg, tr_cfg)

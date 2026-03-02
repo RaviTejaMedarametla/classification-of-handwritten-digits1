@@ -16,7 +16,7 @@ def build_model(config: TrainingConfig):
             n_estimators=config.rf_n_estimators,
             max_features=config.rf_max_features,
             class_weight=config.rf_class_weight,
-            random_state=40,
+            random_state=config.rf_random_state,
             n_jobs=-1,
         )
     raise ValueError(f"Unsupported model_name={config.model_name}")

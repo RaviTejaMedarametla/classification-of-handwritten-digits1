@@ -23,7 +23,7 @@ def main():
         dataset=args.dataset,
         fail_fast_dataset=args.fail_fast_dataset,
     )
-    tr_cfg = TrainingConfig(model_name=args.model)
+    tr_cfg = TrainingConfig(model_name=args.model, rf_random_state=args.seed)
     export_run_metadata(sys_cfg, tr_cfg)
     base = train_once(sys_cfg, tr_cfg)
     print(f"model={args.model} accuracy={base['metrics']['accuracy']:.6f}")

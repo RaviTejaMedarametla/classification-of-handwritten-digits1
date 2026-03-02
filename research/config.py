@@ -24,6 +24,7 @@ class TrainingConfig:
     rf_n_estimators: int = 500
     rf_max_features: str = "sqrt"
     rf_class_weight: str = "balanced"
+    rf_random_state: int = 40
 
 
 @dataclass

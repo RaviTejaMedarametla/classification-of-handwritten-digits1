@@ -5,7 +5,6 @@ from typing import Dict, Tuple
 
 import numpy as np
 import sklearn
-import tensorflow as tf
 from sklearn.datasets import load_digits
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import Normalizer
@@ -24,6 +23,8 @@ def _dataset_checksum(x: np.ndarray, y: np.ndarray) -> str:
 def load_dataset(config: SystemConfig):
     if config.dataset == "mnist":
         try:
+            import tensorflow as tf
+
             (x_train, y_train), _ = tf.keras.datasets.mnist.load_data()
             x = x_train.reshape(x_train.shape[0], 28 * 28).astype(np.float32)
             y = y_train.astype(np.int64)
@@ -32,7 +33,7 @@ def load_dataset(config: SystemConfig):
             if config.fail_fast_dataset:
                 raise RuntimeError("MNIST download/load failed with fail-fast enabled") from exc
             raise RuntimeError(
-                "MNIST download/load failed. Use --dataset digits for offline runs or --fail-fast-dataset for strict mode."
+                "MNIST load failed. Install tensorflow or use --dataset digits for offline runs."
             ) from exc
     elif config.dataset == "digits":
         ds = load_digits()

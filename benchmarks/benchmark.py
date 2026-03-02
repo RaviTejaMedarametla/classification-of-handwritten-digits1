@@ -14,35 +14,50 @@ from compression.compression import (
     weight_prune_features,
 )
 from research.core.utils.metrics import confidence_interval, estimate_energy_joules, save_json, timed_call
-from research.core.utils.plots import plot_curve
+from research.core.utils.plots import plot_bar, plot_curve
 from research.core.utils.reproducibility import set_deterministic
+
+
+def _summary(values: Sequence[float], z: float) -> Dict[str, float]:
+    mean, std, ci = confidence_interval(values, z)
+    return {"mean": mean, "std": std, "ci95": ci}
 
 
 def repeated_benchmark(system_config: SystemConfig, training_config: TrainingConfig, runs: int = 5) -> Dict:
     accs: List[float] = []
     infs: List[float] = []
     trains: List[float] = []
+    sample_counts: List[int] = []
+    seeds: List[int] = []
+
     for i in range(runs):
-        set_deterministic(system_config.seed + i)
+        seed = system_config.seed + i
+        seeds.append(seed)
+        set_deterministic(seed)
         x, y, _ = load_dataset(system_config)
         x_train, x_test, y_train, y_test = split_and_normalize(x, y, system_config)
         model = build_model(training_config)
         _, train_t = timed_call(model.fit, x_train, y_train)
         preds, infer_t = timed_call(model.predict, x_test)
+
         accs.append(float(accuracy_score(y_test, preds)))
         infs.append(float(infer_t))
         trains.append(float(train_t))
+        sample_counts.append(int(len(x_test)))
 
-    acc_mean, acc_std, acc_ci = confidence_interval(accs)
-    inf_mean, inf_std, inf_ci = confidence_interval(infs)
-    train_mean, train_std, train_ci = confidence_interval(trains)
-
+    inf_mean = _summary(infs, system_config.confidence_z)["mean"]
+    avg_samples = int(np.mean(sample_counts)) if sample_counts else 0
     stats = {
-        "accuracy": {"mean": acc_mean, "std": acc_std, "ci95": acc_ci},
-        "inference_latency_s": {"mean": inf_mean, "std": inf_std, "ci95": inf_ci},
-        "training_time_s": {"mean": train_mean, "std": train_std, "ci95": train_ci},
-        "throughput_samples_per_s": 1800 / max(inf_mean, 1e-9),
-        "energy_per_inference_j": estimate_energy_joules(inf_mean / 1800),
+        "summary_version": "v2",
+        "model": training_config.model_name,
+        "runs": int(runs),
+        "seed_schedule": seeds,
+        "sample_count_eval": avg_samples,
+        "accuracy": _summary(accs, system_config.confidence_z),
+        "inference_latency_s": _summary(infs, system_config.confidence_z),
+        "training_time_s": _summary(trains, system_config.confidence_z),
+        "throughput_samples_per_s": float(avg_samples / max(inf_mean, 1e-9)),
+        "energy_per_inference_j": estimate_energy_joules(inf_mean / max(avg_samples, 1)),
     }
     save_json(stats, system_config.artifacts_dir / f"benchmark_{training_config.model_name}.json")
     return stats
@@ -158,32 +173,24 @@ def pruning_hardware_experiment(
             level_baseline_sparsity.append(baseline_sparsity)
             level_added_sparsity.append(added_sparsity)
 
-        acc_mean, acc_std, acc_ci = confidence_interval(level_acc, system_config.confidence_z)
-        lat_mean, lat_std, lat_ci = confidence_interval(level_lat, system_config.confidence_z)
-        thr_mean, thr_std, thr_ci = confidence_interval(level_thr, system_config.confidence_z)
-        energy_mean, energy_std, energy_ci = confidence_interval(level_energy, system_config.confidence_z)
-        mem_mean, mem_std, mem_ci = confidence_interval(level_mem, system_config.confidence_z)
-        model_mem_mean, model_mem_std, model_mem_ci = confidence_interval(level_model_mem, system_config.confidence_z)
-        baseline_mean, baseline_std, baseline_ci = confidence_interval(level_baseline_sparsity, system_config.confidence_z)
-        added_mean, added_std, added_ci = confidence_interval(level_added_sparsity, system_config.confidence_z)
-
         rows.append(
             {
                 "target_sparsity_level": float(level),
-                "baseline_sparsity": {"mean": baseline_mean, "std": baseline_std, "ci95": baseline_ci},
+                "baseline_sparsity": _summary(level_baseline_sparsity, system_config.confidence_z),
                 "achieved_sparsity": float(pruned.stats.get("sparsity", pruned.stats.get("feature_pruned_ratio", level))),
-                "added_sparsity": {"mean": added_mean, "std": added_std, "ci95": added_ci},
-                "accuracy": {"mean": acc_mean, "std": acc_std, "ci95": acc_ci},
-                "latency_s": {"mean": lat_mean, "std": lat_std, "ci95": lat_ci},
-                "throughput_samples_per_s": {"mean": thr_mean, "std": thr_std, "ci95": thr_ci},
-                "energy_per_inference_j": {"mean": energy_mean, "std": energy_std, "ci95": energy_ci},
-                "eval_memory_mb": {"mean": mem_mean, "std": mem_std, "ci95": mem_ci},
-                "model_memory_mb": {"mean": model_mem_mean, "std": model_mem_std, "ci95": model_mem_ci},
+                "added_sparsity": _summary(level_added_sparsity, system_config.confidence_z),
+                "accuracy": _summary(level_acc, system_config.confidence_z),
+                "latency_s": _summary(level_lat, system_config.confidence_z),
+                "throughput_samples_per_s": _summary(level_thr, system_config.confidence_z),
+                "energy_per_inference_j": _summary(level_energy, system_config.confidence_z),
+                "eval_memory_mb": _summary(level_mem, system_config.confidence_z),
+                "model_memory_mb": _summary(level_model_mem, system_config.confidence_z),
                 "effective_batch_size": _effective_batch_size(pruned.x_test.shape[1], hw),
             }
         )
 
     report = {
+        "summary_version": "v2",
         "model": training_config.model_name,
         "pruning_type": pruning_type,
         "hardware_constraints": {
@@ -267,21 +274,18 @@ def model_level_compression_experiment(
             model_sizes.append(model_size)
             compression_ratios.append(1.0 - (model_size / base_model_size))
 
-        acc_mean, acc_std, acc_ci = confidence_interval(accs, system_config.confidence_z)
-        lat_mean, lat_std, lat_ci = confidence_interval(lats, system_config.confidence_z)
-        ms_mean, ms_std, ms_ci = confidence_interval(model_sizes, system_config.confidence_z)
-        cr_mean, cr_std, cr_ci = confidence_interval(compression_ratios, system_config.confidence_z)
         rows.append(
             {
                 "target_level": float(level),
-                "accuracy": {"mean": acc_mean, "std": acc_std, "ci95": acc_ci},
-                "latency_s": {"mean": lat_mean, "std": lat_std, "ci95": lat_ci},
-                "model_size_mb": {"mean": ms_mean, "std": ms_std, "ci95": ms_ci},
-                "compression_ratio": {"mean": cr_mean, "std": cr_std, "ci95": cr_ci},
+                "accuracy": _summary(accs, system_config.confidence_z),
+                "latency_s": _summary(lats, system_config.confidence_z),
+                "model_size_mb": _summary(model_sizes, system_config.confidence_z),
+                "compression_ratio": _summary(compression_ratios, system_config.confidence_z),
             }
         )
 
     report = {
+        "summary_version": "v2",
         "model": training_config.model_name,
         "runs": runs,
         "levels": rows,
@@ -307,3 +311,71 @@ def model_level_compression_experiment(
         root / f"compression_ratio_vs_latency_{training_config.model_name}.png",
     )
     return report
+
+
+def operator_level_profile(system_config: SystemConfig, training_config: TrainingConfig, batch_size: int = 64) -> Dict:
+    set_deterministic(system_config.seed)
+    x, y, _ = load_dataset(system_config)
+    x_train, x_test, y_train, _ = split_and_normalize(x, y, system_config)
+
+    model = build_model(training_config)
+    model.fit(x_train, y_train)
+    batch = x_test[: max(1, min(batch_size, len(x_test)))]
+
+    _, total_latency = timed_call(model.predict, batch)
+    samples = max(1, len(batch))
+    feature_count = batch.shape[1]
+    input_bytes = float(batch.nbytes)
+    model_bytes = float(len(pickle.dumps(model)))
+
+    if training_config.model_name == "knn":
+        operator_breakdown = {
+            "distance_compute_s": float(total_latency * 0.70),
+            "neighbor_selection_s": float(total_latency * 0.20),
+            "vote_aggregation_s": float(total_latency * 0.10),
+        }
+    else:
+        operator_breakdown = {
+            "tree_traversal_s": float(total_latency * 0.85),
+            "vote_aggregation_s": float(total_latency * 0.10),
+            "output_formatting_s": float(total_latency * 0.05),
+        }
+
+    bandwidth_bytes_per_s = float((input_bytes + model_bytes) / max(total_latency, 1e-9))
+    throughput = float(samples / max(total_latency, 1e-9))
+    utilization_vs_reference = float(min(1.0, throughput / 1_000_000.0))
+
+    profile = {
+        "model": training_config.model_name,
+        "batch_size": samples,
+        "features": int(feature_count),
+        "total_latency_s": float(total_latency),
+        "throughput_samples_per_s": throughput,
+        "memory": {
+            "input_batch_mb": float(input_bytes / (1024 ** 2)),
+            "serialized_model_mb": float(model_bytes / (1024 ** 2)),
+        },
+        "bandwidth": {
+            "estimated_bytes_per_s": bandwidth_bytes_per_s,
+            "estimated_mb_per_s": float(bandwidth_bytes_per_s / (1024 ** 2)),
+        },
+        "utilization": {
+            "reference_samples_per_s": 1_000_000,
+            "ratio": utilization_vs_reference,
+        },
+        "operator_latency_breakdown_s": operator_breakdown,
+        "notes": [
+            "Operator breakdown is an analytical partition of end-to-end latency.",
+            "Use hardware counters for production-grade microarchitectural profiling.",
+        ],
+    }
+
+    root = system_config.artifacts_dir
+    save_json(profile, root / f"operator_profile_{training_config.model_name}.json")
+    plot_bar(
+        operator_breakdown,
+        f"Operator Latency Breakdown ({training_config.model_name})",
+        "Latency (s)",
+        root / f"operator_profile_{training_config.model_name}.png",
+    )
+    return profile

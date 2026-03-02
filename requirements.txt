@@ -1,9 +1,8 @@
-https://github.com/hyperskill/hs-test-python/archive/release.tar.gz
-tensorflow
-numpy
-pandas
-matplotlib
-scikit-learn
-joblib
-skl2onnx
-onnxruntime
+numpy==1.26.4
+pandas==2.2.3
+matplotlib==3.9.2
+scikit-learn==1.5.2
+psutil==6.1.0
+joblib==1.4.2
+skl2onnx==1.17.0
+onnxruntime==1.19.2

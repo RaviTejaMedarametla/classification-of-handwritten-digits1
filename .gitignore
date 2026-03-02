@@ -1,0 +1,15 @@
+# Python cache and build outputs
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# Runtime artifacts
+artifacts/
+*.log
+
+# Notebook checkpoints
+.ipynb_checkpoints/

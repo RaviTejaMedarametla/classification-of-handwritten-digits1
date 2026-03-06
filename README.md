@@ -1,29 +1,63 @@
-# Handwritten Digit Classification: Compression, Benchmarking, and Deployment
+# Hardware-Aware Handwritten Digit Classification Pipeline
+
+A reproducible machine learning system for compression-aware handwritten digit classification, benchmarking, and deployment validation.
 
 ## Overview
 
-This repository implements an engineering-focused machine learning workflow for handwritten digit classification, with explicit support for compression experiments, benchmark analysis, and deployment validation under resource constraints.
+This repository implements a research-oriented engineering pipeline for handwritten digit classification using modular components for training, evaluation, compression studies, and deployment checks. The system is designed to support controlled experimentation across model families while preserving traceability from data processing to runtime artifacts.
 
-It is part of a broader portfolio focused on hardware-aware machine learning, edge AI optimization, deterministic ML pipelines, and production ML systems.
+A central objective is to assess model quality together with resource behavior under practical constraints such as memory budgets, compute scaling, and inference latency. This hardware-aware perspective is important for transitioning machine learning models from development environments to edge or production settings where computational resources are limited and reproducibility requirements are strict.
+
+## Project Motivation
+
+Machine learning performance is often reported primarily through accuracy metrics, while deployment constraints are addressed late in the development cycle. This project is motivated by the need to evaluate classification models jointly on predictive quality and system-level efficiency.
+
+The repository therefore emphasizes deterministic experimentation, compression-oriented analysis, and benchmark repeatability. This enables rigorous comparison of design choices when targeting resource-constrained environments and improves confidence in downstream deployment decisions.
 
 ## System Architecture
 
-The project is organized into modular packages that separate experimentation concerns:
+- **Data Pipeline**  
+  Dataset access and preprocessing utilities are organized within the research package to provide consistent inputs for training, evaluation, and inference workflows.
 
-- `research/`: configuration, dataset utilities, analysis utilities, and CLI entry points for training/evaluation/inference.
-- `compression/`: feature pruning, prototype reduction, quantization simulation, and model construction helpers.
-- `benchmarks/`: repeated experiment execution, confidence interval summaries, and hardware-constrained benchmarking flows.
-- `deployment/`: ONNX export pipeline, parity checks, and batch CPU inference utilities.
-- `docs/`: system design notes and hardware profiling guidance.
-- `artifacts/`: generated runtime outputs (reports, plots, and serialized model artifacts).
+- **Model Training**  
+  CLI-driven training routines support controlled model fitting and parameterized experiments for handwritten digit classification.
+
+- **Model Compression**  
+  Compression modules provide feature pruning, prototype reduction, and quantization simulation to study efficiency/accuracy trade-offs.
+
+- **Hardware-Aware Evaluation**  
+  Benchmark utilities execute repeated runs, summarize statistics, and support memory- and compute-constrained evaluation scenarios.
+
+- **Inference and Deployment Validation**  
+  Deployment tooling includes ONNX export and prediction parity checks to verify that exported artifacts align with native model behavior.
+
+## Repository Structure
+
+- **`research/`**  
+  Core research workflow components, including configuration helpers, dataset utilities, and CLI entry points for train/evaluate/infer.
+
+- **`compression/`**  
+  Compression and model-reduction logic used for efficiency experiments.
+
+- **`benchmarks/`**  
+  Benchmark orchestration, repeated-run execution, and summary reporting utilities.
+
+- **`deployment/`**  
+  Export and deployment validation tooling, including ONNX conversion and inference checks.
+
+- **`docs/`**  
+  Design and profiling documentation for system behavior and hardware-oriented analysis.
+
+- **`artifacts/`**  
+  Generated experiment outputs such as reports, plots, and serialized model artifacts.
 
 ## Features
 
-- Deterministic training and evaluation controls through configurable seeding.
-- Compression-oriented experimentation for size/performance trade-off analysis.
-- Benchmark routines with repeatable runs and summary statistics.
-- Deployment verification with ONNX export and agreement checks.
-- Hardware-aware reporting for latency, throughput, and memory-oriented constraints.
+- Deterministic machine learning workflows via configurable run settings and seed control.
+- Compression-aware experimentation for model size/performance trade-off analysis.
+- Hardware-aware benchmarking with repeated evaluations and statistical summaries.
+- Deployment validation through ONNX export and agreement testing.
+- CLI-oriented execution for reproducible end-to-end experiments.
 
 ## Installation
 
@@ -33,7 +67,7 @@ python -m pip install -r requirements.txt
 
 ## Usage
 
-Example command-line workflows:
+Example experiment commands:
 
 ```bash
 python -m research.train_cli --model knn --dataset digits --run-compression --run-quantization
@@ -41,25 +75,47 @@ python -m research.evaluate_cli --model rf --dataset digits --runs 5 --run-model
 python -m research.infer_cli --model knn --dataset digits --batch-size 64 --export-onnx --onnx-min-agreement 0.98
 ```
 
-For implementation and profiling details, see:
+Additional implementation details are available in:
 
 - `docs/system_design.md`
 - `docs/hardware_profiling.md`
 
 ## Reproducibility
 
-- Use explicit seed options in CLI commands for deterministic runs.
-- Prefer `--dataset digits` for fully offline execution.
-- Preserve command flags and generated JSON reports for each run.
-- Re-run with identical parameters to compare outputs under `artifacts/`.
+Reproducible experimentation is supported through:
+
+- **Configuration-driven execution** via parameterized CLI options.
+- **Deterministic seeds** to control stochastic components across repeated runs.
+- **Experiment artifacts** stored under `artifacts/` for traceable comparison of outputs, metrics, and reports.
+
+For strict replication, rerun commands with identical flags and dataset settings.
 
 ## Related Projects
 
-This repository is part of a larger AI systems engineering portfolio:
+This repository is part of a broader portfolio on:
 
-- `neural-network-systems`
-- `digit-classification-benchmark`
-- `edge-ai-model-optimization`
-- `hospital-analytics-pipeline`
-- `nba-data-engineering`
-- `ai-systems-ml-platform`
+- hardware-aware machine learning
+- edge AI optimization
+- deterministic ML pipelines
+- production ML systems
+
+Related repositories:
+
+- `neural-network-from-scratch`
+- `classification-of-handwritten-digits1`
+- `edge-ai-hardware-optimization`
+- `data-analysis-for-hospitals`
+- `nba-data-preprocessing`
+- `Data-Science-AI-Portfolio`
+
+## Future Work
+
+Potential extensions include:
+
+- deployment benchmarking on embedded and low-power edge devices,
+- expanded compression methods for more aggressive memory reduction,
+- enhanced benchmarking frameworks for deeper latency/throughput profiling across hardware classes.
+
+## License
+
+This project is distributed under the terms specified in the `LICENSE` file.

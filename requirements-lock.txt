@@ -2,7 +2,7 @@ hs-test-python @ https://github.com/hyperskill/hs-test-python/archive/release.ta
 tensorflow==2.15.0
 numpy==1.26.4
 pandas==2.2.2
-matplotlib==3.8.4
+matplotlib>=3.8.0,<4.0
 scikit-learn==1.4.2
 scipy==1.12.0
 joblib==1.4.2

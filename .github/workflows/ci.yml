@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 on:
   push:
@@ -14,9 +14,11 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Unit tests
+        run: pytest --cov=research --cov=compression --cov=benchmarks --cov-report=term-missing
       - name: Smoke training
-        run: python -m research.train_cli --model knn --dataset digits
+        run: python -m research.train_cli --model knn --dataset digits --sample-size 300
       - name: Compression benchmark smoke
-        run: python -m research.evaluate_cli --model rf --dataset digits --runs 2 --run-model-compression
+        run: python -m research.evaluate_cli --model rf --dataset digits --sample-size 300 --runs 2 --run-model-compression
       - name: ONNX parity check
-        run: python -m research.infer_cli --model knn --dataset digits --export-onnx --onnx-min-agreement 0.98
+        run: python -m research.infer_cli --model knn --dataset digits --sample-size 300 --export-onnx --onnx-min-agreement 0.98

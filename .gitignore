@@ -1,15 +1,41 @@
-# Python cache and build outputs
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
 *.egg-info/
+dist/
+build/
 
 # Virtual environments
-.venv/
 venv/
+.env/
+.venv/
 
-# Runtime artifacts
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Outputs
 artifacts/
-*.log
+results/*.csv
+results/*.png
+results/*.json
+results/*.log
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -1,50 +1,57 @@
-# Hardware-Aware Handwritten Digit Classification Pipeline
+# Classification of Handwritten Digits
 
-Reproducible handwritten-digit classification with compression studies, benchmark suites, ONNX parity checks, and profiler-backed deployment measurements.
+A research‑oriented repository implementing multiple classifiers from scratch (k‑NN, SVM, MLP, CNN) and evaluating them under hardware‑aware constraints (latency, memory, energy). The project includes feature extraction (HOG, PCA), hyperparameter tuning, interpretability (saliency maps), and comprehensive benchmarking.
 
-## Install
+## Features
+
+- **Classifiers implemented from scratch** – k‑Nearest Neighbors, SVM (with simplified SMO), Multi‑Layer Perceptron, and a small CNN.
+- **Feature extraction** – HOG, PCA, and standard scaling.
+- **Hardware‑aware metrics** – inference latency, memory footprint, and energy proxy.
+- **Model compression** – pruning and quantization experiments.
+- **ONNX export** – convert trained models to ONNX and validate parity.
+- **Reproducibility** – deterministic seeds, configuration via dataclasses, and experiment logging.
+- **CLI tools** – train, evaluate, and infer from the command line.
+- **Extensive test suite** – ensures correctness of all components.
+
+## Installation
 
 ```bash
-python -m pip install -r requirements-lock.txt
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-> `requirements-lock.txt` is the reproducible lock file. `requirements.txt` is pinned and mirrored.
+## Usage
+
+Train a model:
+```bash
+python -m research.train_cli --model knn --dataset digits
+```
+
+Evaluate a trained model:
+```bash
+python -m research.evaluate_cli --model knn --dataset digits --runs 5
+```
+
+Run inference (optionally export to ONNX):
+```bash
+python -m research.infer_cli --model knn --dataset digits --export-onnx
+```
+
+Run all experiments and generate summary tables:
+```bash
+python results/run_all_experiments.py
+```
 
 ## Project Structure
 
-- `research/`: training/eval/inference CLIs and core ML pipeline.
-- `compression/`: pruning, prototype reduction, and quantization simulation.
-- `benchmarks/`: benchmark modules (`repeated_benchmark.py`, `pruning_benchmark.py`, `compression_benchmark.py`, `operator_profile.py`) with facade `benchmark.py`.
-- `deployment/`: ONNX export/validation and measured ONNX profiling.
-- `results/`: experiment runners and statistical analysis scripts.
-- `docs/experimental_protocol.md`: scientific protocol and reporting guidance.
+- `research/` – core implementation: configuration, data loading, training, evaluation, CLI.
+- `benchmarks/` – scripts for repeated benchmarking, pruning, compression, and operator profiling.
+- `compression/` – utilities for pruning and quantization.
+- `deployment/` – ONNX export and inference.
+- `results/` – experiment orchestration and statistical comparison.
+- `tests/` – unit and integration tests.
 
-## Reproduce Core Runs
+## License
 
-```bash
-python -m research.train_cli --model knn --dataset digits --run-compression --run-quantization
-python -m research.evaluate_cli --model rf --dataset digits --runs 5 --run-model-compression --run-pruning-efficiency
-python -m research.infer_cli --model knn --dataset digits --export-onnx --onnx-min-agreement 0.98
-python -m results.run_all_experiments
-```
-
-## Measured vs Simulated Metrics
-
-- **Simulated**: pruning/hardware scaling effects and analytical operator breakdown from benchmark modules.
-- **Measured**: real CPU inference latency with ONNXRuntime:
-
-```bash
-python -m deployment.profile_onnx --onnx-path results/knn.onnx --feature-dim 64 --iterations 100 --warmup 10
-```
-
-## Statistical Comparison
-
-```bash
-python -m results.statistical_comparison --a path/to/model_a_outputs.npy --b path/to/model_b_outputs.npy
-```
-
-## Additional Documentation
-
-- `docs/system_design.md`
-- `docs/hardware_profiling.md`
-- `docs/experimental_protocol.md`
+This project is released under the MIT License. See `LICENSE` for details.
